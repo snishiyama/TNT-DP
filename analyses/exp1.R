@@ -22,19 +22,7 @@ l_aov_ques_e1 <- df_ques_e1 %>%
   purrr::map(.f = rstatix::get_anova_table, correction = "auto")
 
 # multiple comparisons for cue types of think items
-mc_ques_think_e1 <- df_ques_e1 %>% 
-  dplyr::filter(condition == "think") %>% 
-  multi_aov("type", model_ques_e1, c("cue", "tar", "sub"))
-
-# Effect size
-df_es_think_ques_e1 <- df_ques_e1 %>% 
-  dplyr::filter(condition == "think") %>% 
-  tidyr::pivot_wider(names_from = type, values_from = rating) %>% 
-  dplyr::summarise(cue_sub = MBESS::smd(cue, sub, Unbiased = T),
-                   cue_tar = MBESS::smd(cue, tar, Unbiased = T),
-                   tar_sub = MBESS::smd(tar, sub, Unbiased = T)) %>% 
-  tidyr::pivot_longer(cols = cue_sub:tar_sub, names_to = c("level1", "level2"), names_sep = "_", values_to = "g")
-
+mc_ques_think_e1 <- multi_aov(l_aov_ques_e1$think, "type")
 
 # group-by simple main effect analyses for no-think items
 sme_ques_nt_e1 <- df_ques_e1 %>% 
@@ -59,10 +47,9 @@ df_es_nt_ques_e1 <- df_ques_e1 %>%
 
 # reporting
 purrr::map(l_aov_ques_e1, format_aov)
-dplyr::left_join(mc_ques_think_e1, df_es_think_ques_e1, by = c("level1", "level2")) %>% 
-  format_mc(es = T)
+format_mc(mc_ques_think_e1, es = T)
 dplyr::left_join(pwt_ques_nt_e1, df_es_nt_ques_e1, by = c("suppression", "group1" = "level1", "group2" = "level2")) %>% 
-  format_pwt(grouped = T, es = T)
+  format_t(grouped = T, es = T)
 
 # recall rate -------------------------------------------------------------
 
@@ -82,7 +69,7 @@ aov_rcll_e1 <- df_rcll_e1 %>%
   rstatix::get_anova_table(correction = "auto")
 
 # multiple comparisons
-mc_rcll_e1 <- multi_aov(df_rcll_e1, "status", model_rcll_e1, c("think", "nothink", "baseline"))
+mc_rcll_e1 <- multi_aov(aov_rcll_e1, "status")
 
 # source(here::here("analyses/anovakun_485.txt"))
 # aovkun <- df_rcll_e1 %>%
@@ -101,14 +88,6 @@ mc_rcll_e1 <- multi_aov(df_rcll_e1, "status", model_rcll_e1, c("think", "nothink
 #   emmeans::emmeans(~ status) %>% 
 #   emmeans::contrast(method = "pairwise", adjust = "holm")
 
-# Effect size
-df_es_rcll_e1 <- df_rcll_e1 %>% 
-  tidyr::pivot_wider(names_from = status, values_from = rate) %>% 
-  dplyr::summarise(think_nothink = MBESS::smd(think, nothink, Unbiased = T),
-                   think_baseline = MBESS::smd(think, baseline, Unbiased = T),
-                   nothink_baseline = MBESS::smd(nothink, baseline, Unbiased = T)) %>% 
-  tidyr::pivot_longer(cols = everything(), names_to = c("level1", "level2"), names_sep = "_", values_to = "g")
-
 # t.test on substitute
 ttest_sub_rcll_e1 <- df_rcll_e1 %>% 
   dplyr::filter(status == "substitute") %>% 
@@ -117,11 +96,10 @@ ttest_sub_rcll_e1 <- df_rcll_e1 %>%
 l_sub_rcll_e1 <- df_rcll_e1 %>% 
     dplyr::filter(status == "substitute") %>% 
     split(.$suppression)
-g_rcll_sub_e1 <- MBESS::smd(l_sub_rcll_e1$`0`$rate, l_sub_rcll_e1$`1`$rate)
+
+ttest_sub_rcll_e1["g"] <- MBESS::smd(l_sub_rcll_e1$`0`$rate, l_sub_rcll_e1$`1`$rate)
 
 # reporting
 format_aov(aov_rcll_e1)
-dplyr::left_join(mc_rcll_e1, df_es_rcll_e1, by = c("level1", "level2")) %>% 
-  format_mc(es = T)
-ttest_sub_rcll_e1["g"] <- g_rcll_sub_e1#, df_es_nt_ques_e1, by = c("suppression", "group1" = "level1", "group2" = "level2")) %>% 
-format_t(ttest_sub_rcll_e1, es = T)
+format_mc(mc_rcll_e1, es = T)
+format_t(ttest_sub_rcll_e1, es = T, p_adj = F)
