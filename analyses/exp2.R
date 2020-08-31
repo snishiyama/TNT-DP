@@ -27,6 +27,14 @@ mc_ques_think_e2 <- df_ques_e2 %>%
   dplyr::filter(condition == "t") %>% 
   multi_aov("type", model_ques_e2, c("cue", "tar", "sub"))
 
+df_es_think_ques_e2 <- df_ques_e2 %>% 
+  dplyr::filter(condition == "t") %>% 
+  tidyr::pivot_wider(names_from = type, values_from = rating) %>% 
+  dplyr::summarise(cue_sub = MBESS::smd(cue, sub, Unbiased = T),
+                   cue_tar = MBESS::smd(cue, tar, Unbiased = T),
+                   tar_sub = MBESS::smd(tar, sub, Unbiased = T)) %>% 
+  tidyr::pivot_longer(cols = cue_sub:tar_sub, names_to = c("level1", "level2"), names_sep = "_", values_to = "g")
+
 # group-by simple main effect analyses for no-think items
 sme_ques_nt_e2 <- df_ques_e2 %>% 
   dplyr::filter(condition == "nt") %>% 
@@ -41,12 +49,21 @@ pwt_ques_nt_e2 <- df_ques_e2 %>%
   rstatix::pairwise_t_test(rating ~ type, paired = T)
 
 # effect sizes
-df_es_ques_e2 <- df_ques_e2 %>% 
+df_es_nt_ques_e2 <- df_ques_e2 %>% 
+  dplyr::filter(condition == "nt") %>% 
   tidyr::pivot_wider(names_from = type, values_from = rating) %>% 
-  dplyr::group_by(condition, suppression) %>% 
-  dplyr::summarise(g_cuesub = MBESS::smd(cue, sub, Unbiased = T),
-                   g_cuetar = MBESS::smd(cue, tar, Unbiased = T),
-                   g_tarsub = MBESS::smd(tar, sub, Unbiased = T))
+  dplyr::group_by(suppression) %>% 
+  dplyr::summarise(cue_sub = MBESS::smd(cue, sub, Unbiased = T),
+                   cue_tar = MBESS::smd(cue, tar, Unbiased = T),
+                   sub_tar = MBESS::smd(tar, sub, Unbiased = T)) %>% 
+  tidyr::pivot_longer(cols = -suppression, names_to = c("level1", "level2"), names_sep = "_", values_to = "g")
+
+# reporting
+purrr::map(l_aov_ques_e2, format_aov)
+dplyr::left_join(mc_ques_think_e2, df_es_think_ques_e2, by = c("level1", "level2")) %>% 
+  format_mc(es = T)
+dplyr::left_join(pwt_ques_nt_e2, df_es_nt_ques_e2, by = c("suppression", "group1" = "level1", "group2" = "level2")) %>% 
+  format_pwt(grouped = T, es = T)
 
 
 # recall rate -------------------------------------------------------------
@@ -66,14 +83,15 @@ aov_rcll_r_e2 <- df_rcll_r_e2 %>%
   rstatix::get_anova_table(correction = "auto")
 
 # multiple comparisons
-mc_rcll_r_e2 <- multi_aov(df_rcll_r_e2, "status", model_rcll_e2, c("think", "nothink", "baseline"))
+mc_rcll_r_e2 <- multi_aov(df_rcll_r_e2, "status", model_rcll_r_e2, c("think", "nothink", "baseline"))
 
 # Effect size
 df_es_rcll_r_e2 <- df_rcll_r_e2 %>% 
   tidyr::pivot_wider(names_from = status, values_from = rate) %>% 
-  dplyr::summarise(g_tnt = MBESS::smd(think, nothink, Unbiased = T),
-                   g_tb = MBESS::smd(think, baseline, Unbiased = T),
-                   g_ntb = MBESS::smd(nothink, baseline, Unbiased = T))
+  dplyr::summarise(think_nothink = MBESS::smd(think, nothink, Unbiased = T),
+                   think_baseline = MBESS::smd(think, baseline, Unbiased = T),
+                   nothink_baseline = MBESS::smd(nothink, baseline, Unbiased = T)) %>% 
+  tidyr::pivot_longer(cols = everything(), names_to = c("level1", "level2"), names_sep = "_", values_to = "g")
 
 # t.test on substitute
 ttest_sub_rcll_r_e2 <- df_rcll_r_e2 %>% 
@@ -83,9 +101,15 @@ ttest_sub_rcll_r_e2 <- df_rcll_r_e2 %>%
 l_sub_rcll_r_e2 <- df_rcll_r_e2 %>% 
   dplyr::filter(status == "substitute") %>% 
   split(.$suppression)
+g_rcll_r_sub_e2 <- MBESS::smd(l_sub_rcll_r_e2$`0`$rate, l_sub_rcll_r_e2$`1`$rate)
 
-g_rcll_r_sub_e1 <- MBESS::smd(l_sub_rcll_r_e2$`0`$rate, l_sub_rcll_r_e2$`1`$rate)
 
+# reporting
+format_aov(aov_rcll_r_e2)
+dplyr::left_join(mc_rcll_r_e2, df_es_rcll_r_e2, by = c("level1", "level2")) %>% 
+  format_mc(es = T)
+ttest_sub_rcll_r_e2["g"] <- g_rcll_r_sub_e2#, df_es_nt_ques_e1, by = c("suppression", "group1" = "level1", "group2" = "level2")) %>% 
+format_t(ttest_sub_rcll_r_e2, es = T)
 
 # recall latency ----------------------------------------------------------
 
@@ -107,9 +131,10 @@ mc_rcll_d_e2 <- multi_aov(df_rcll_d_e2, "status", model_rcll_d_e2, c("think", "n
 # Effect size
 df_es_rcll_d_e2 <- df_rcll_d_e2 %>% 
   tidyr::pivot_wider(names_from = status, values_from = delay) %>% 
-  dplyr::summarise(g_tnt = MBESS::smd(think, nothink, Unbiased = T),
-                   g_tb = MBESS::smd(think, baseline, Unbiased = T),
-                   g_ntb = MBESS::smd(nothink, baseline, Unbiased = T))
+  dplyr::summarise(think_nothink = MBESS::smd(think, nothink, Unbiased = T),
+                   think_baseline = MBESS::smd(think, baseline, Unbiased = T),
+                   nothink_baseline = MBESS::smd(nothink, baseline, Unbiased = T)) %>% 
+  tidyr::pivot_longer(cols = everything(), names_to = c("level1", "level2"), names_sep = "_", values_to = "g")
 
 # group-by simple main effect analyses for no-think items
 sme_rcll_d_e2 <- df_rcll_d_e2 %>% 
@@ -117,12 +142,24 @@ sme_rcll_d_e2 <- df_rcll_d_e2 %>%
   rstatix::anova_test(delay ~ suppression) %>% 
   rstatix::get_anova_table(correction = "auto")
 
+# substitute
 df_rcll_l_sub <- df_e2 %>% 
   dplyr::select(participant, suppression, s_RT)
-
 ttest_sub_rcll_l_e2 <- df_rcll_l_sub %>% 
   rstatix::t_test(s_RT ~ suppression, paired = F, var.equal = F)
 
+l_sub_rcll_l <- df_rcll_l_sub %>% 
+  tidyr::drop_na() %>% 
+  split(.$suppression)
+g_rcll_l_sub <- MBESS::smd(l_sub_rcll_l$`0`$s_RT, l_sub_rcll_l$`1`$s_RT, Unbiased = T)
+
+# reporting
+format_aov(aov_rcll_d_e2)
+format_aov(sme_rcll_d_e2, grouped = T)
+dplyr::left_join(mc_rcll_d_e2, df_es_rcll_d_e2, by = c("level1", "level2")) %>% 
+  format_mc(es = T)
+ttest_sub_rcll_l_e2["g"] <- g_rcll_l_sub #, df_es_nt_ques_e1, by = c("suppression", "group1" = "level1", "group2" = "level2")) %>% 
+format_t(ttest_sub_rcll_l_e2, es = T)
 
 # dot probe ---------------------------------------------------------------
 
@@ -148,6 +185,9 @@ sme_dp_e2 <- df_dp_e2 %>%
   rstatix::anova_test(diff ~ condition*type + Error(participant/(condition*type))) %>% 
   rstatix::get_anova_table(correction = "auto")
 
+# reporting
+format_aov(aov_dp_e2)
+format_aov(sme_dp_e2, grouped = T)
 
 # correlation -------------------------------------------------------------
 
@@ -159,4 +199,17 @@ df_corr <- df_e2 %>%
                       values_to = "value") %>% 
   dplyr::filter(TNTcond != "s") %>% 
   tidyr::pivot_wider(names_from = variable, values_from = value)
+
+calc_scor <- function(df, group){
+  df %>% 
+    dplyr::filter(suppression == group) %>% 
+    tidyr::drop_na() %>% 
+    split(.$TNTcond) %>% 
+    purrr::map(.f = dplyr::select, delay, cong, incong) %>% 
+    purrr::map(mscorci)
+}
+
+res_corr_ds <- calc_scor(df_corr, group = 0)
+res_corr_ts <- calc_scor(df_corr, group = 1)
+
 

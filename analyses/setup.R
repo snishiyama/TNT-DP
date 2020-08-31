@@ -27,6 +27,90 @@ multi_aov <- function(df, factor, model, levels) {
   return(res)
 }
 
+format_pval <- function(pval) {
+  sapply(pval, function(x) {
+    if (is.na(x)) {
+      return(NA_character_)
+    }
+    if (x < .001) {
+      pval_txt <- "_p_ < .001"
+    }
+    else if (x == 1) {
+      pval_txt <- "_p_ = 1.00"
+    }
+    else {
+      pval_new <- 
+        sprintf("%.3f", x) %>% 
+        stringr::str_sub(start = 2)
+      pval_txt <- sprintf("_p_ = %s", pval_new)
+    }
+    return(pval_txt)
+  })
+}
+
+format_aov <- function(aov_tbl, grouped = F, p_adj = F) {
+  pval <- "{format_pval(p)}, "
+  if (p_adj) {
+    pval <- "{format_pval(p.adj)}, "
+  }
+  
+  txt <- aov_tbl %>% 
+    stringr::str_glue_data("_F_({DFn}, {DFd}) = {sprintf('%.2f', F)}, ", pval, "$\\eta^2_G$ = {sprintf('%.2f', ges)}")
+  
+  if (!grouped) {
+    names(txt) <- aov_tbl$Effect
+    return(as.list(txt))
+  }
+  names(txt) <- 
+    str_glue("{Effect}@{grp}",
+             Effect = aov_tbl$Effect,
+             grp = dplyr::pull(aov_tbl, 1))
+  return(as.list(txt))
+}
+
+format_mc <- function(mc_tbl, es = F) {
+  txt <- mc_tbl %>% 
+    stringr::str_glue_data("_t_({DFd}) = {sprintf('%.2f', abs(t))}, {format_pval(p.adj)}")
+  if (es) {
+    txt <- mc_tbl %>% 
+      stringr::str_glue_data("_t_({DFd}) = {sprintf('%.2f', abs(t))}, {format_pval(p.adj)}, g = {sprintf('%.2f', abs(g))}")
+  } 
+
+  names(txt) <- str_glue_data(mc_tbl, "{level1}^{level2}")
+  
+  return(as.list(txt))
+}
+
+format_pwt <- function(pwt_tbl, grouped = F, es = F) {
+  txt <- pwt_tbl %>% 
+    stringr::str_glue_data("_t_({df}) = {sprintf('%.2f', statistic)}, {format_pval(p.adj)}")
+  if (es) {
+    txt <- pwt_tbl %>% 
+      stringr::str_glue_data("_t_({df}) = {sprintf('%.2f', statistic)}, {format_pval(p.adj)}, g = {sprintf('%.2f', g)}")
+  }
+  if (!grouped) {
+    names(txt) <- str_glue_data(pwt_tbl, "{group1}^{group2}")
+    return(as.list(txt))
+  }
+  names(txt) <- 
+    str_glue("{level1}^{level2}@{grp}",
+             level1 = pwt_tbl$group1,
+             level2 = pwt_tbl$group2,
+             grp = dplyr::pull(pwt_tbl, 1))
+  return(as.list(txt))
+}
+
+format_t <- function(t_tbl, es = F) {
+  txt <- t_tbl %>% 
+    stringr::str_glue_data("_t_({df}) = {sprintf('%.2f', statistic)}, {format_pval(p)}")
+  if (es) {
+    txt <- t_tbl %>% 
+      stringr::str_glue_data("_t_({df}) = {sprintf('%.2f', statistic)}, {format_pval(p)}, g = {sprintf('%.2f', abs(g))}")
+  }
+
+  names(txt) <- str_glue_data(t_tbl, "{group1}^{group2}")
+  return(as.list(txt))
+}
 
 df_e1 <- readr::read_csv(here::here("exp/data/sotsuron_exp1_part2.csv")) %>% 
   dplyr::select(-1)
