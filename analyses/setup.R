@@ -126,18 +126,6 @@ format_t <- function(t_tbl, p_adj = T, grouped = F, es = F) {
   return(as.list(txt))
 }
 
-# format_t <- function(t_tbl, es = F) {
-#   txt <- t_tbl %>% 
-#     stringr::str_glue_data("_t_({df}) = {sprintf('%.2f', statistic)}, {format_pval(p)}")
-#   if (es) {
-#     txt <- t_tbl %>% 
-#       stringr::str_glue_data("_t_({df}) = {sprintf('%.2f', statistic)}, {format_pval(p)}, g = {sprintf('%.2f', abs(g))}")
-#   }
-# 
-#   names(txt) <- str_glue_data(t_tbl, "{group1}^{group2}")
-#   return(as.list(txt))
-# }
-
 df_e1 <- readr::read_csv(here::here("exp/data/sotsuron_exp1_part2.csv")) %>% 
   dplyr::select(-1)
 
