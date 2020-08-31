@@ -213,3 +213,56 @@ res_corr_ds <- calc_scor(df_corr, group = 0)
 res_corr_ts <- calc_scor(df_corr, group = 1)
 
 
+# plot --------------------------------------------------------------------
+
+gg_DP <- df_dp_e2 %>% 
+  mutate(suppression = if_else(suppression == 0, "Direct suppression", "Thought substitution"),
+         type = if_else(type == "cong", "Congruent", "Incongruent"),
+         condition = case_when(condition == "t" ~ "Think",
+                               condition == "nt" ~ "No-Think",
+                               condition == "b" ~ "Baseline"),
+         condition = forcats::fct_relevel(condition, "Think", "No-Think")) %>% 
+  ggplot(aes(x = condition, y = diff, fill = type)) +
+  stat_summary(geom = "bar", fun = mean, position = position_dodge2(), color = "black", size = 0.3) +
+  stat_summary(geom = "errorbar", fun.data = mean_cl_normal, 
+               position = position_dodge(width = 0.9), size = 0.3, width = 0.3) +
+  scale_fill_grey(start = 1, end = 0.6) +
+  labs(y = "Adjusted RT scores") +
+  geom_hline(yintercept = 0, size = 0.3) +
+  facet_wrap(~ suppression, ncol = 2, strip.position = "bottom") +
+  theme_bw(base_size = 12) +
+  theme(axis.text = element_text(colour = "black"), 
+        panel.grid = element_blank(),
+        axis.title.x = element_blank(),
+        legend.title = element_blank(),
+        legend.background = element_blank(),
+        legend.text = element_text(margin = margin(t = 0, r = 8, b = 0, l = 3, unit = "pt")),
+        legend.position = "top", 
+        strip.placement = "outside", 
+        strip.background = element_blank(),
+        strip.text = element_text(size=12)
+  )
+
+gg_delay <- df_rcll_d_e2 %>% 
+  mutate(suppression = if_else(suppression == 0, "Direct suppression", "Thought substitution"),
+         condition = case_when(status == "think" ~ "Think",
+                               status == "nothink" ~ "No-Think",
+                               status == "baseline" ~ "Baseline"),
+         condition = forcats::fct_relevel(condition, "Think", "No-Think")) %>% 
+  ggplot(aes(x = suppression, y = delay, fill = condition)) +
+  stat_summary(geom = "bar", fun = mean, position = position_dodge2(), color = "black", size = 0.3) +
+  stat_summary(geom = "errorbar", fun.data = mean_cl_normal, 
+               position = position_dodge(width = 0.9), size = 0.3, width = 0.3) +
+  scale_fill_grey(start = 1, end = 0.6) +
+  geom_hline(yintercept = 0, size = 0.3) +
+  labs(y = "Recall delay (ms)") +
+  # facet_grid(cols = vars(suppression)) +
+  theme_bw(base_size = 12) +
+  theme(axis.text = element_text(colour = "black"), 
+        panel.grid = element_blank(),
+        axis.title.x = element_blank(),
+        legend.title = element_blank(),
+        legend.text = element_text(margin = margin(t = 0, r = 8, b = 0, l = 2, unit = "pt")),
+        legend.position = "top", 
+        legend.background = element_blank())
+
