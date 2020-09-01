@@ -1,3 +1,6 @@
+
+# load packages -----------------------------------------------------------
+
 library(tidyverse)
 library(rstatix)
 library(here)
@@ -126,8 +129,40 @@ format_t <- function(t_tbl, p_adj = T, grouped = F, es = F) {
   return(as.list(txt))
 }
 
-df_e1 <- readr::read_csv(here::here("exp/data/sotsuron_exp1_part2.csv")) %>% 
-  dplyr::select(-1)
 
-df_e2 <- readr::read_csv(here::here("exp/data/TNT_exp2_sotsuron.csv")) %>% 
-  dplyr::mutate(suppression = suppression - 1L) # Exp1の条件分けが0 / 1だから
+# load data sets ----------------------------------------------------------
+
+# df_e1 <- readr::read_csv(here::here("exp/data/sotsuron_exp1_part2.csv")) %>%
+#   dplyr::select(-1)
+
+df_e1 <- fs::dir_ls(path = here::here("exp/data/exp1"), regexp = "[[:digit:]]+\\.csv") %>% 
+  purrr::map_dfr(readr::read_csv) %>% 
+  dplyr::mutate(suppression = if_else(participant %% 2 == 0, "TS", "DS")) %>% 
+  dplyr::mutate_if(is.character, as_factor)
+
+df_ques_e1 <- fs::dir_ls(path = here::here("exp/data/exp1"), regexp = "[[:digit:]]+_ques\\.csv") %>% 
+  purrr::map_dfr(readr::read_csv) %>% 
+  dplyr::mutate(suppression = if_else(participant %% 2 == 0, "TS", "DS"))
+
+df_e2 <- fs::dir_ls(path = here::here("exp/data/exp2"), regexp = "[[:digit:]]+\\.csv") %>% 
+  purrr::map_dfr(readr::read_csv) %>% 
+  dplyr::filter(participant != 3) %>% 
+  dplyr::mutate(suppression = if_else(participant %% 2 == 0, "TS", "DS")) %>% 
+  dplyr::mutate_if(is.character, as_factor)
+
+df_ques_e2 <- fs::dir_ls(path = here::here("exp/data/exp2"), regexp = "[[:digit:]]+_ques\\.csv") %>% 
+  purrr::map_dfr(readr::read_csv) %>% 
+  dplyr::filter(participant != 3) %>% 
+  dplyr::mutate(suppression = if_else(participant %% 2 == 0, "TS", "DS")) %>% 
+  dplyr::rename("type" = condition, "status" = surppress)
+
+df_rcll_l_sub <- fs::dir_ls(path = here::here("exp/data/exp2"), regexp = "[[:digit:]]+_sRT\\.csv") %>% 
+  purrr::map_dfr(readr::read_csv) %>% 
+  dplyr::filter(participant != 3) %>% 
+  dplyr::mutate(suppression = if_else(participant %% 2 == 0, "TS", "DS"))
+
+# df_rcll_e2 <- df_e2 %>% 
+#   dplyr::select(participant, suppression, item_id, status, contains("recall"))
+
+# df_e2 <- readr::read_csv(here::here("exp/data/TNT_exp2_sotsuron.csv")) %>%
+#   dplyr::mutate(suppression = suppression - 1L) # Exp1の条件分けが0 / 1だから
