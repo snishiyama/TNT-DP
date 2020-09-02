@@ -137,8 +137,7 @@ format_t <- function(t_tbl, p_adj = T, grouped = F, es = F) {
 
 df_e1 <- fs::dir_ls(path = here::here("exp/data/exp1"), regexp = "[[:digit:]]+\\.csv") %>% 
   purrr::map_dfr(readr::read_csv) %>% 
-  dplyr::mutate(suppression = if_else(participant %% 2 == 0, "TS", "DS")) %>% 
-  dplyr::mutate_if(is.character, as_factor)
+  dplyr::mutate(suppression = if_else(participant %% 2 == 0, "TS", "DS"))
 
 df_ques_e1 <- fs::dir_ls(path = here::here("exp/data/exp1"), regexp = "[[:digit:]]+_ques\\.csv") %>% 
   purrr::map_dfr(readr::read_csv) %>% 
@@ -147,8 +146,7 @@ df_ques_e1 <- fs::dir_ls(path = here::here("exp/data/exp1"), regexp = "[[:digit:
 df_e2 <- fs::dir_ls(path = here::here("exp/data/exp2"), regexp = "[[:digit:]]+\\.csv") %>% 
   purrr::map_dfr(readr::read_csv) %>% 
   dplyr::filter(participant != 3) %>% 
-  dplyr::mutate(suppression = if_else(participant %% 2 == 0, "TS", "DS")) %>% 
-  dplyr::mutate_if(is.character, as_factor)
+  dplyr::mutate(suppression = if_else(participant %% 2 == 0, "TS", "DS"))
 
 df_ques_e2 <- fs::dir_ls(path = here::here("exp/data/exp2"), regexp = "[[:digit:]]+_ques\\.csv") %>% 
   purrr::map_dfr(readr::read_csv) %>% 
@@ -166,3 +164,33 @@ df_rcll_l_sub <- fs::dir_ls(path = here::here("exp/data/exp2"), regexp = "[[:dig
 
 # df_e2 <- readr::read_csv(here::here("exp/data/TNT_exp2_sotsuron.csv")) %>%
 #   dplyr::mutate(suppression = suppression - 1L) # Exp1の条件分けが0 / 1だから
+
+df_dp_raw_e2 <- purrr::map_dfr(
+  .x = fs::dir_ls(here::here("exp/data/exp2"), glob = "*.xlsx"),
+  .f = function(x) {
+    par_id <- stringr::str_extract(x, "\\d+_TNT") %>% readr::parse_number()
+    snms <- readxl::excel_sheets(x)
+    rng <- "A2:J137"
+    colnms <- c("ID", "below", "letter", "above", "congruency", "position", "order", "key", "corr", "RT")
+    if (length(snms) > 10) {
+      rng <- "A1:P137"
+      colnms <- TRUE
+    }
+    dp_snm <- str_subset(snms, "(DP)|(dot)")
+    df <- readxl::read_xlsx(path = x, sheet = dp_snm, range = rng, col_names = colnms) %>% 
+      dplyr::mutate(participant = par_id)
+    if (length(snms) > 10) {
+      df <- df %>% 
+        dplyr::select(participant, ID, below, letter, above, congruency, position, order,
+                      "key" = key_resp_43.keys_raw, 
+                      "corr" = key_resp_43.corr_mean,
+                      "RT" = key_resp_43.rt_mean)
+    }
+    return(df)
+  }
+) %>% dplyr::left_join(
+    y = df_e2 %>% dplyr::select(participant, item_id, status),
+    by = c("participant", "ID" = "item_id")
+  ) %>% 
+  dplyr::mutate(status = replace_na(status, "filler"))
+

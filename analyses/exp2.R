@@ -140,62 +140,33 @@ format_t(ttest_sub_rcll_l_e2, p_adj = F, es = T)
 
 # dot probe ---------------------------------------------------------------
 
-readr::read_csv(here::here("exp/data/TNT_exp2_sotsuron.csv")) %>%
-  dplyr::mutate(suppression = suppression - 1L) %>%
-  dplyr::select(participant, suppression, matches("(cong|incong)$"), new) %>% 
-  tidyr::pivot_longer(matches("(cong|incong)$"), 
-                      names_to = c("condition", "type"),
-                      names_sep = "_",
-                      values_to = "latency") %>% 
-  ggplot() +
-  aes(x = condition, y = latency, color = type) +
-  stat_summary(geom = "pointrange", fun.data = "mean_se", position = position_dodge(width = 0.5)) +
-  facet_wrap(~suppression)
-# %>% 
-#   dplyr::mutate(diff = (latency - new) / new)
-readr::read_csv(here::here("exp/data/TNT_exp2_sotsuron.csv")) %>%
-  dplyr::mutate(suppression = suppression - 1L) %>%
-  dplyr::select(participant, suppression, matches("(cong|incong)$"), new) %>% 
-  tidyr::pivot_longer(matches("(cong|incong)$"), 
-                      names_to = c("condition", "type"),
-                      names_sep = "_",
-                      values_to = "latency") %>% 
-  dplyr::select(-new) %>%
-  rstatix::anova_test(latency ~ suppression*condition*type + Error(participant/(condition*type))) %>% 
-  rstatix::get_anova_table(correction = "auto")
-
-df_dp_e2 <- df_e2 %>% 
-  dplyr::filter(pre_recall_corr == 1, 
-                ((participant < 25 & dp_corr == 1) | (participant >= 25 & dp_corr == 0)),
-                dp_rt < 1
-                ) %>% 
+df_dp_e2 <- df_dp_raw_e2 %>% 
+  filter(
+    ((participant < 25 & corr == 1) | (participant >= 25 & corr == 0)),
+    RT < 1
+  ) %>% 
   dplyr::group_by(participant) %>% 
-  dplyr::mutate(mean = mean(dp_rt), sd = sd(dp_rt)) %>% 
-  dplyr::filter(between(dp_rt, mean - 2.5 * sd, mean + 2.5 * sd))
+  dplyr::mutate(mean = mean(RT), sd = sd(RT), 
+                suppression = if_else(participant %% 2 == 0, "TS", "DS")) %>% 
+  dplyr::filter(between(RT, mean - 2.5 * sd, mean + 2.5 * sd))
 
 df_dp_mean_e2 <- df_dp_e2 %>% 
+  dplyr::left_join(df_e2 %>% dplyr::select(participant, item_id, status, pre_recall_corr),
+                   by = c("participant", "ID" = "item_id", "status")) %>% 
+  dplyr::filter(pre_recall_corr == 1) %>% 
   dplyr::group_by(participant, suppression, status, congruency) %>% 
-  dplyr::summarise(mean = mean(dp_rt), .groups = "drop")
-
-df_dp_mean_e2 %>% 
-  ggplot() +
-  aes(x = status, y = mean, color = congruency) +
-  stat_summary(geom = "pointrange", fun.data = "mean_se", position = position_dodge(width = 0.5)) +
-  facet_wrap(~suppression)
+  dplyr::summarise(mean = mean(RT), .groups = "drop") %>% 
+  dplyr::filter(status != "filler")
 
 # anova
-# model_dp_e2 <- diff ~ suppression*condition*type + Error(participant/(condition*type))
-model_dp_e2 <- mean ~ suppression*status*congruency + Error(participant/(status*congruency))
 aov_dp_e2 <- df_dp_mean_e2 %>% 
-  # dplyr::select(-new, -latency) %>% 
   rstatix::anova_test(mean ~ suppression*status*congruency + Error(participant/(status*congruency))) %>% 
   rstatix::get_anova_table(correction = "auto")
 
 # simple main effect
-sme_dp_e2 <- df_dp_e2 %>% 
-  dplyr::select(-new, -latency) %>% 
+sme_dp_e2 <- df_dp_mean_e2 %>% 
   dplyr::group_by(suppression) %>% 
-  rstatix::anova_test(diff ~ condition*type + Error(participant/(condition*type))) %>% 
+  rstatix::anova_test(mean ~ status*congruency + Error(participant/(status*congruency))) %>% 
   rstatix::get_anova_table(correction = "auto")
 
 # reporting
@@ -205,44 +176,71 @@ format_aov(sme_dp_e2, grouped = T)
 
 # correlation -------------------------------------------------------------
 
-df_corr <- df_e2 %>% 
-  dplyr::select(participant, suppression, ends_with("cong"), ends_with("recall"), ends_with("delay")) %>% 
-  tidyr::pivot_longer(cols = c(-participant, -suppression),
-                      names_to = c("TNTcond", "variable"),
-                      names_sep = "_",
-                      values_to = "value") %>% 
-  dplyr::filter(TNTcond != "s") %>% 
-  tidyr::pivot_wider(names_from = variable, values_from = value)
+df_corr <- dplyr::left_join(
+    df_rcll_d_e2,
+    tidyr::pivot_wider(df_dp_mean_e2, names_from = "congruency", values_from = "mean"),
+    by = c("participant", "suppression", "status")
+  )
 
 calc_scor <- function(df, group) {
   df %>% 
     dplyr::filter(suppression == group) %>% 
     tidyr::drop_na() %>% 
-    split(.$TNTcond) %>% 
+    split(.$status) %>% 
     purrr::map(.f = dplyr::select, delay, cong, incong) %>% 
-    purrr::map(mscorci)
+    purrr::map(mscorci, corfun = pcor)
 }
 
-res_corr_ds <- calc_scor(df_corr, group = 0)
-res_corr_ts <- calc_scor(df_corr, group = 1)
+res_corr_ds <- calc_scor(df_corr, group = "DS")
+res_corr_ts <- calc_scor(df_corr, group = "TS")
+
+df_corr %>% 
+  dplyr::filter(suppression == "DS", status == "nothink") %>% 
+  dplyr::select(delay, cong, incong) %>% 
+  cor(method = "pearson")
+
+df_corr %>% 
+  dplyr::filter(suppression == "DS", status == "nothink") %>% 
+  ggplot() +
+  aes(x = scale(delay)[,1], y = scale(cong)[,1]) +
+  geom_point()
+
+df_dp_delay <- dplyr::left_join(
+  x = df_e2 %>% 
+    dplyr::filter(pre_recall_corr == 1, post_recall_corr == 1) %>% 
+    dplyr::mutate(diff = post_recall_rt - pre_recall_rt) %>% 
+    dplyr::select(participant, suppression, item_id, status, diff),
+  y = df_dp_e2 %>% dplyr::select(participant, suppression, status, congruency, "item_id" = ID, "dp_rt" = RT),
+  by = c("participant", "suppression", "status", "item_id"))
+
+df_dp_delay %>% 
+  tidyr::drop_na() %>% 
+  dplyr::group_by(participant, suppression, status, congruency) %>% 
+  tidyr::nest() %>% 
+  dplyr::mutate(corr = purrr::map(.x = data, .f = ~cor(.x$diff, .x$dp_rt, method = "spearman"))) %>% 
+  tidyr::unnest(corr) %>% 
+  dplyr::group_by(suppression, status, congruency) %>% 
+  dplyr::summarise(mean = mean(corr), sd = sd(corr))
+
 
 
 # plot --------------------------------------------------------------------
 
-gg_DP <- df_dp_e2 %>% 
-  mutate(suppression = if_else(suppression == 0, "Direct suppression", "Thought substitution"),
-         type = if_else(type == "cong", "Congruent", "Incongruent"),
-         condition = case_when(condition == "t" ~ "Think",
-                               condition == "nt" ~ "No-Think",
-                               condition == "b" ~ "Baseline"),
+gg_DP <- df_dp_mean_e2 %>% 
+  mutate(suppression = if_else(suppression == "DS", "Direct suppression", "Thought substitution"),
+         type = if_else(congruency == "cong", "Congruent", "Incongruent"),
+         condition = case_when(status == "think" ~ "Think",
+                               status == "nothink" ~ "No-Think",
+                               status == "baseline" ~ "Baseline"),
          condition = forcats::fct_relevel(condition, "Think", "No-Think")) %>% 
-  ggplot(aes(x = condition, y = diff, fill = type)) +
+  ggplot(aes(x = condition, y = mean, fill = type)) +
   stat_summary(geom = "bar", fun = mean, position = position_dodge2(), color = "black", size = 0.3) +
   stat_summary(geom = "errorbar", fun.data = mean_cl_normal, 
                position = position_dodge(width = 0.9), size = 0.3, width = 0.3) +
   scale_fill_grey(start = 1, end = 0.6) +
   labs(y = "Adjusted RT scores") +
-  geom_hline(yintercept = 0, size = 0.3) +
+  # geom_hline(yintercept = 0, size = 0.3) +
+  coord_cartesian(ylim = c(0.45, 0.55)) +
   facet_wrap(~ suppression, ncol = 2, strip.position = "bottom") +
   theme_bw(base_size = 12) +
   theme(axis.text = element_text(colour = "black"), 
