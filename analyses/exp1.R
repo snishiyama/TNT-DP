@@ -47,18 +47,20 @@ df_es_nt_ques_e1 <- df_ques_mean_e1 %>%
 # reporting
 purrr::map(l_aov_ques_e1, format_aov)
 format_mc(mc_ques_think_e1, es = T)
+format_aov(sme_ques_nt_e1, grouped = T)
 dplyr::left_join(pwt_ques_nt_e1, df_es_nt_ques_e1, by = c("suppression", "group1" = "level1", "group2" = "level2")) %>% 
   format_t(grouped = T, es = T)
 
+
 # recall rate -------------------------------------------------------------
 
-df_rcll_e1 <- df_e1 %>% 
-  dplyr::select(participant, suppression, 
-                think = recall_think, 
-                nothink = recall_nothink, 
-                baseline = recall_base, 
-                substitute = recall_sub) %>% 
-  tidyr::pivot_longer(think:substitute, names_to = "status", values_to = "rate")
+# df_rcll_e1 <- df_e1 %>% 
+#   dplyr::select(participant, suppression, 
+#                 think = recall_think, 
+#                 nothink = recall_nothink, 
+#                 baseline = recall_base, 
+#                 substitute = recall_sub) %>% 
+#   tidyr::pivot_longer(think:substitute, names_to = "status", values_to = "rate")
 
 df_rcll_e1 <- df_e1 %>% 
   dplyr::select(participant, suppression, item_id = ID, status = condition,

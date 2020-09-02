@@ -48,6 +48,7 @@ df_es_nt_ques_e2 <- df_ques_mean_e2 %>%
 # reporting
 purrr::map(l_aov_ques_e2, format_aov)
 format_mc(mc_ques_think_e2, es = T)
+format_aov(sme_ques_nt_e2, group = T)
 dplyr::left_join(pwt_ques_nt_e2, df_es_nt_ques_e2, by = c("suppression", "group1" = "level1", "group2" = "level2")) %>% 
   format_t(grouped = T, es = T)
 
@@ -120,8 +121,9 @@ sme_rcll_d_e2 <- df_rcll_d_e2 %>%
 
 # substitute
 df_rcll_l_sub_mean <- df_rcll_l_sub %>% 
+  dplyr::filter(sub_corr != 0) %>% 
   dplyr::group_by(participant, suppression) %>% 
-  dplyr::summarise(mean = mean(rt, na.rm = T), .groups = "drop")
+  dplyr::summarise(mean = mean(sub_rt, na.rm = T), .groups = "drop")
 
 ttest_sub_rcll_l_e2 <- df_rcll_l_sub_mean %>% 
   rstatix::t_test(mean ~ suppression, paired = F, var.equal = F)
@@ -136,6 +138,29 @@ format_aov(aov_rcll_d_e2)
 format_mc(mc_rcll_d_e2, es = T)
 format_aov(sme_rcll_d_e2, grouped = T)
 format_t(ttest_sub_rcll_l_e2, p_adj = F, es = T)
+
+
+# remove id 15, 27 ---
+
+df_rcll_d_e2_rm <- df_rcll_d_e2 %>% dplyr::filter(!participant %in% c(15, 27))
+
+# anova t vs nt vs b
+aov_rcll_d_e2_rm <- df_rcll_d_e2_rm %>% 
+  rstatix::anova_test(delay ~ suppression*status + Error(participant/status)) %>% 
+  rstatix::get_anova_table(correction = "auto")
+
+# multiple comparisons
+mc_rcll_d_e2_rm <- multi_aov(aov_rcll_d_e2_rm, "status")
+
+# group-by simple main effect analyses for no-think items
+sme_rcll_d_e2_rm <- df_rcll_d_e2_rm %>% 
+  dplyr::group_by(status) %>% 
+  rstatix::anova_test(delay ~ suppression) %>% 
+  rstatix::get_anova_table(correction = "auto")
+
+format_aov(aov_rcll_d_e2_rm)
+format_mc(mc_rcll_d_e2_rm, es = T)
+format_aov(sme_rcll_d_e2_rm, grouped = T)
 
 
 # dot probe ---------------------------------------------------------------
@@ -173,6 +198,11 @@ sme_dp_e2 <- df_dp_mean_e2 %>%
 format_aov(aov_dp_e2)
 format_aov(sme_dp_e2, grouped = T)
 
+# trial-by-trial variances
+df_dp_e2 %>% 
+  dplyr::ungroup() %>% 
+  dplyr::distinct(participant, sd) %>% 
+  dplyr::summarise(mean = mean(sd))
 
 # correlation -------------------------------------------------------------
 
@@ -180,31 +210,45 @@ df_corr <- dplyr::left_join(
     df_rcll_d_e2,
     tidyr::pivot_wider(df_dp_mean_e2, names_from = "congruency", values_from = "mean"),
     by = c("participant", "suppression", "status")
-  )
+  ) %>% 
+  dplyr::mutate(dp = incong - cong)
 
 calc_scor <- function(df, group) {
   df %>% 
     dplyr::filter(suppression == group) %>% 
     tidyr::drop_na() %>% 
     split(.$status) %>% 
-    purrr::map(.f = dplyr::select, delay, cong, incong) %>% 
-    purrr::map(mscorci, corfun = pcor)
+    purrr::map(.f = dplyr::select, delay, cong, incong, dp) %>% 
+    purrr::map(mscorci, corfun = spear)#pcor)
 }
 
-res_corr_ds <- calc_scor(df_corr, group = "DS")
+# res_corr_ds <- calc_scor(df_corr, group = "DS")
 res_corr_ts <- calc_scor(df_corr, group = "TS")
 
-df_corr %>% 
-  dplyr::filter(suppression == "DS", status == "nothink") %>% 
-  dplyr::select(delay, cong, incong) %>% 
-  cor(method = "pearson")
+df_corr_rm <- df_corr %>% dplyr::filter(!participant %in% c(15, 27))
 
-df_corr %>% 
-  dplyr::filter(suppression == "DS", status == "nothink") %>% 
+res_corr_ds_rm <- calc_scor(df_corr_rm, group = "DS")
+
+df_corr_rm %>%
+  dplyr::filter(suppression == "DS") %>%
+  split(.$status) %>% 
+  purrr::map(dplyr::select, delay, cong, incong, dp) %>%
+  purrr::map(cor, method = "spearman")
+
+df_corr_rm %>%
+  dplyr::filter(suppression == "TS") %>%
+  split(.$status) %>% 
+  purrr::map(dplyr::select, delay, cong, incong, dp) %>%
+  purrr::map(cor, method = "spearman")
+
+# 
+df_corr_rm %>%
+  dplyr::filter(suppression == "DS", status == "nothink") %>%
   ggplot() +
-  aes(x = scale(delay)[,1], y = scale(cong)[,1]) +
+  aes(x = rank(delay), y = rank(dp)) +
   geom_point()
 
+# by-item correlation --
 df_dp_delay <- dplyr::left_join(
   x = df_e2 %>% 
     dplyr::filter(pre_recall_corr == 1, post_recall_corr == 1) %>% 
@@ -221,7 +265,6 @@ df_dp_delay %>%
   tidyr::unnest(corr) %>% 
   dplyr::group_by(suppression, status, congruency) %>% 
   dplyr::summarise(mean = mean(corr), sd = sd(corr))
-
 
 
 # plot --------------------------------------------------------------------
