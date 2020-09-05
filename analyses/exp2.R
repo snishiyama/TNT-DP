@@ -171,9 +171,17 @@ df_dp_e2 <- df_dp_raw_e2 %>%
     RT < 1
   ) %>% 
   dplyr::group_by(participant) %>% 
-  dplyr::mutate(mean = mean(RT), sd = sd(RT), 
+  dplyr::mutate(mad = mad(RT),
+                median = median(RT),
                 suppression = if_else(participant %% 2 == 0, "TS", "DS")) %>% 
-  dplyr::filter(between(RT, mean - 2.5 * sd, mean + 2.5 * sd))
+  dplyr::filter(between(RT, median - 2.5 * mad, median + 2.5 * mad))
+
+dplyr::anti_join(df_dp_raw_e2, 
+                 df_dp_e2 %>% dplyr::select(participant, ID), 
+                 by = c("participant", "ID")) %>% 
+  dplyr::group_by(participant, status) %>% 
+  dplyr::summarise(value = n())
+
 
 df_dp_mean_e2 <- df_dp_e2 %>% 
   dplyr::left_join(df_e2 %>% dplyr::select(participant, item_id, status, pre_recall_corr),
@@ -219,10 +227,10 @@ calc_scor <- function(df, group) {
     tidyr::drop_na() %>% 
     split(.$status) %>% 
     purrr::map(.f = dplyr::select, delay, cong, incong, dp) %>% 
-    purrr::map(mscorci, corfun = spear)#pcor)
+    purrr::map(mscorci, corfun = pcor, nboot = 1000)
 }
 
-# res_corr_ds <- calc_scor(df_corr, group = "DS")
+res_corr_ds <- calc_scor(df_corr, group = "DS")
 res_corr_ts <- calc_scor(df_corr, group = "TS")
 
 df_corr_rm <- df_corr %>% dplyr::filter(!participant %in% c(15, 27))
@@ -233,19 +241,19 @@ df_corr_rm %>%
   dplyr::filter(suppression == "DS") %>%
   split(.$status) %>% 
   purrr::map(dplyr::select, delay, cong, incong, dp) %>%
-  purrr::map(cor, method = "spearman")
+  purrr::map(psych::corr.test, method = "pearson")
 
 df_corr_rm %>%
   dplyr::filter(suppression == "TS") %>%
   split(.$status) %>% 
   purrr::map(dplyr::select, delay, cong, incong, dp) %>%
-  purrr::map(cor, method = "spearman")
+  purrr::map(psych::corr.test, method = "pearson")
 
 # 
 df_corr_rm %>%
   dplyr::filter(suppression == "DS", status == "nothink") %>%
   ggplot() +
-  aes(x = rank(delay), y = rank(dp)) +
+  aes(x = delay, y = dp*1000) +
   geom_point()
 
 # by-item correlation --
@@ -262,10 +270,10 @@ df_dp_delay %>%
   dplyr::group_by(participant, suppression, status, congruency) %>% 
   tidyr::nest() %>% 
   dplyr::mutate(corr = purrr::map(.x = data, .f = ~cor(.x$diff, .x$dp_rt, method = "spearman"))) %>% 
-  tidyr::unnest(corr) %>% 
+  tidyr::unnest(corr) %>%
   dplyr::group_by(suppression, status, congruency) %>% 
-  dplyr::summarise(mean = mean(corr), sd = sd(corr))
-
+  dplyr::summarise(mean = mean(corr, na.rm = T), sd = sd(corr, na.rm = T))
+  
 
 # plot --------------------------------------------------------------------
 
