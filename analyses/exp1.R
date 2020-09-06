@@ -13,6 +13,15 @@ df_ques_mean_e1 <- df_ques_e1 %>%
   dplyr::summarise(rating = mean(rate), .groups = "drop") %>% 
   dplyr::mutate_if(is.character, as_factor)
 
+# Table
+# df_ques_mean_e1 %>% 
+#   dplyr::mutate(status = fct_relevel(status, "think"),
+#                 type = fct_relevel(type, "cue", "tar")) %>% 
+#   dplyr::group_by(suppression, status, type) %>% 
+#   dplyr::summarise(value = mean_cl(rating), name = c("Mean", "CI"), .groups = "drop") %>% 
+#   tidyr::unite(col = "cond", suppression, type, sep = "_") %>% 
+#   tidyr::pivot_wider(names_from = cond, values_from = value)
+
 # ANOVA
 l_aov_ques_e1 <- df_ques_mean_e1 %>% 
   split(.$status) %>% 
@@ -96,6 +105,15 @@ ttest_sub_rcll_e1["g"] <- MBESS::smd(l_sub_rcll_e1$DS$rate, l_sub_rcll_e1$TS$rat
 format_aov(aov_rcll_e1)
 format_mc(mc_rcll_e1, es = T)
 format_t(ttest_sub_rcll_e1, es = T, p_adj = F)
+
+# Table
+# df_rcll_e1 %>%
+#   dplyr::bind_rows(df_rcll_sub_e1 %>% dplyr::mutate(status = "substitute")) %>% 
+#   dplyr::mutate(status = factor(status, levels = c("think", "nothink", "baseline", "substitute")),
+#                 suppression = factor(suppression, levels = c("DS", "TS"))) %>% 
+#   dplyr::group_by(suppression, status) %>%
+#   dplyr::summarise(value = mean_cl(rate), name = c("Mean", "CI"), .groups = "drop") %>%
+#   tidyr::pivot_wider(names_from = status, values_from = value)
 
 # source(here::here("analyses/anovakun_485.txt"))
 # aovkun <- df_rcll_e1 %>%

@@ -129,6 +129,13 @@ format_t <- function(t_tbl, p_adj = T, grouped = F, es = F) {
   return(as.list(txt))
 }
 
+# for creating summary tables
+mean_cl <- function(x){
+  res <- Hmisc::smean.cl.normal(x)
+  mean <- sprintf("%.2f", res["Mean"])
+  ci <- sprintf("[%.2f, %.2f]", res['Lower'], res['Upper'])
+  return(c(mean, ci))
+}
 
 # load data sets ----------------------------------------------------------
 

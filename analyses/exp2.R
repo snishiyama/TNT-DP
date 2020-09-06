@@ -89,6 +89,14 @@ format_aov(aov_rcll_r_e2)
 format_mc(mc_rcll_r_e2, es = T)
 format_t(ttest_sub_rcll_r_e2, p_adj = F, es = T)
 
+# Table
+df_rcll_r_e2 %>%
+  dplyr::bind_rows(df_sub_rcll_r_e2 %>% dplyr::mutate(status = "substitute")) %>%
+  dplyr::mutate(status = factor(status, levels = c("think", "nothink", "baseline", "substitute")),
+                suppression = factor(suppression, levels = c("DS", "TS"))) %>%
+  dplyr::group_by(suppression, status) %>%
+  dplyr::summarise(value = mean_cl(rate), name = c("Mean", "CI"), .groups = "drop") %>%
+  tidyr::pivot_wider(names_from = status, values_from = value)
 
 # recall latency ----------------------------------------------------------
 
@@ -167,8 +175,8 @@ format_aov(sme_rcll_d_e2_rm, grouped = T)
 
 df_dp_e2 <- df_dp_raw_e2 %>% 
   filter(
-    ((participant < 25 & corr == 1) | (participant >= 25 & corr == 0)),
-    RT < 1
+    ((participant < 25 & corr == 1) | (participant >= 25 & corr == 0))#,
+    # RT < 1
   ) %>% 
   dplyr::group_by(participant) %>% 
   dplyr::mutate(mad = mad(RT),
@@ -176,12 +184,16 @@ df_dp_e2 <- df_dp_raw_e2 %>%
                 suppression = if_else(participant %% 2 == 0, "TS", "DS")) %>% 
   dplyr::filter(between(RT, median - 2.5 * mad, median + 2.5 * mad))
 
-dplyr::anti_join(df_dp_raw_e2, 
+df_dp_rm <- dplyr::anti_join(df_dp_raw_e2, 
                  df_dp_e2 %>% dplyr::select(participant, ID), 
                  by = c("participant", "ID")) %>% 
-  dplyr::group_by(participant, status) %>% 
-  dplyr::summarise(value = n())
+  dplyr::mutate(filler = if_else(status == "filler", 1, 0)) %>% 
+  dplyr::group_by(participant, filler) %>% 
+  dplyr::summarise(freq = n(), .groups = "drop") %>% 
+  dplyr::group_by(filler) %>%
+  dplyr::summarise(mean = mean(freq), sd = sd(freq), .groups = "drop")
 
+df_dp_rm$mean / c(36, 124)
 
 df_dp_mean_e2 <- df_dp_e2 %>% 
   dplyr::left_join(df_e2 %>% dplyr::select(participant, item_id, status, pre_recall_corr),
@@ -227,10 +239,10 @@ calc_scor <- function(df, group) {
     tidyr::drop_na() %>% 
     split(.$status) %>% 
     purrr::map(.f = dplyr::select, delay, cong, incong, dp) %>% 
-    purrr::map(mscorci, corfun = pcor, nboot = 1000)
+    purrr::map(mscorci, corfun = pcor, nboot = 500)
 }
 
-res_corr_ds <- calc_scor(df_corr, group = "DS")
+# res_corr_ds <- calc_scor(df_corr, group = "DS")
 res_corr_ts <- calc_scor(df_corr, group = "TS")
 
 df_corr_rm <- df_corr %>% dplyr::filter(!participant %in% c(15, 27))
@@ -289,7 +301,7 @@ gg_DP <- df_dp_mean_e2 %>%
   stat_summary(geom = "errorbar", fun.data = mean_cl_normal, 
                position = position_dodge(width = 0.9), size = 0.3, width = 0.3) +
   scale_fill_grey(start = 1, end = 0.6) +
-  labs(y = "Adjusted RT scores") +
+  labs(y = "RT (s)") +
   # geom_hline(yintercept = 0, size = 0.3) +
   coord_cartesian(ylim = c(0.45, 0.55)) +
   facet_wrap(~ suppression, ncol = 2, strip.position = "bottom") +
@@ -318,7 +330,7 @@ gg_delay <- df_rcll_d_e2 %>%
                position = position_dodge(width = 0.9), size = 0.3, width = 0.3) +
   scale_fill_grey(start = 1, end = 0.6) +
   geom_hline(yintercept = 0, size = 0.3) +
-  labs(y = "Recall delay (ms)") +
+  labs(y = "Recall delay (s)") +
   # facet_grid(cols = vars(suppression)) +
   theme_bw(base_size = 12) +
   theme(axis.text = element_text(colour = "black"), 
@@ -329,3 +341,5 @@ gg_delay <- df_rcll_d_e2 %>%
         legend.position = "top", 
         legend.background = element_blank())
 
+# ggsave(filename = here::here("analyses/figure/gg_DP_exp2.pdf"), plot = gg_DP, height = 90, width = 160, units = "mm", dpi = 300)
+# ggsave(filename = here::here("analyses/figure/gg_delay_exp2.pdf"), plot = gg_delay, height = 90, width = 160, units = "mm", dpi = 300)
