@@ -17,7 +17,7 @@ item_id,word,status,pre_recall_corr,post_recall_corr,sub_recall,dp_rt,congruency
 16,とんぼ,baseline,1,1,NA,0.464121103287,incong,1,0.747,0.81,10
 17,カレー,baseline,1,1,NA,0.547260046005,cong,1,0.82,0.854,10
 18,ダイヤ,baseline,1,1,NA,0.51414513588,cong,1,1.341,1.306,10
-19,ラジオ,baseline,1,1,NA,0.46369600296,incong,1,1.321,0.154,10
+19,ラジオ,baseline,1,1,NA,0.46369600296,incong,1,1.321,1.540,10
 20,ベランダ,baseline,1,1,NA,0.497579813004,incong,1,1.333,0.94,10
 21,ジャズ,baseline,1,1,NA,0.730537891388,cong,1,0.817,0.847,10
 22,ビール,baseline,1,1,NA,0.480585098267,cong,1,0.944,1.306,10

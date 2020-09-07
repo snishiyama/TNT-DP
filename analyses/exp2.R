@@ -219,10 +219,10 @@ format_aov(aov_dp_e2)
 format_aov(sme_dp_e2, grouped = T)
 
 # trial-by-trial variances
-df_dp_e2 %>% 
-  dplyr::ungroup() %>% 
-  dplyr::distinct(participant, sd) %>% 
-  dplyr::summarise(mean = mean(sd))
+# df_dp_e2 %>% 
+#   dplyr::ungroup() %>% 
+#   dplyr::distinct(participant, sd) %>% 
+#   dplyr::summarise(mean = mean(sd))
 
 # correlation -------------------------------------------------------------
 
