@@ -193,6 +193,7 @@ df_dp_raw_e2 <- purrr::map_dfr(
   dplyr::mutate(status = replace_na(status, "filler"))
 
 
+# check onset reliability -------------------------------------------------
 
 get_sheet_regexp <- function(filepath, pattern, cols = NULL) {
   par_id <- stringr::str_extract(filepath, "\\d+_TNT") %>% readr::parse_number()
@@ -254,39 +255,33 @@ df_manual <- df_e2 %>%
 df_chr_man <- dplyr::left_join(df_chronset, df_manual, by = c("participant", "phase", "ID")) %>% 
   tidyr::drop_na()
 
-df_chr_man %>% 
-  # dplyr::filter(chronset > 500) %>% 
+df_record_w_filler <- readxl::read_xlsx(here::here("exp/data/record_w_filler.xlsx")) %>% 
+  dplyr::select(participant, phase, order, ID, filler)
+
+df_chr_man_new <- left_join(df_chr_man, df_record_w_filler, by = c("participant", "phase", "order", "ID")) %>%
+  tidyr::replace_na(list(filler = 0)) %>% 
+  dplyr::filter(filler != 1) %>% 
+  dplyr::filter(chronset > 500)
+
+res_lm <- lm(chronset ~ manual, data = df_chr_man_new)
+gg_chr_man <- df_chr_man_new %>% 
   ggplot2::ggplot() +
   aes(x = manual, y = chronset) +
-  geom_abline(slope = 1, intercept = 0) +
-  geom_abline(slope = 1, intercept = 300) +
-  geom_abline(slope = 1, intercept = -300) +
-  geom_hline(yintercept = 500) +
-  geom_vline(xintercept = 500) +
-  geom_point(shape = 1) +
-  # geom_smooth(formula = y ~ x, method = "lm") +
-  theme_bw() +
-  coord_cartesian(xlim = c(0, 3200), ylim = c(0, 3200), expand = F)
+  geom_abline(slope = 1, intercept = 0, alpha = 0.5) +
+  geom_point(shape = 1, size = 1.5, alpha = 0.5) +
+  stat_smooth(formula = y ~ x, method = "lm", color = "black", fullrange = T, se = F) +
+  coord_cartesian(xlim = c(0, 3200), ylim = c(0, 3200), expand = F) +
+  xlim(0,3200) +
+  annotate("text", 
+           label = sprintf("y = %.2f + %.2f x", res_lm$coefficients["(Intercept)"], res_lm$coefficients["manual"]), 
+           x = 1000, y = 2500) +
+  theme_bw(base_family = "Helvetica") +
+  theme(panel.grid = element_blank(),
+        axis.text = element_text(color = "black"))
 
-
-df_chr_man %>% 
-  dplyr::filter(manual + 300 < chronset)
-
-df_chr_man %>% 
-  dplyr::filter(manual - 300 > chronset, chronset > 500) %>% 
-  dplyr::arrange(participant)
-  
-cor(df_chr_man$manual, df_chr_man$chronset)
-
-# 言い直し
-tibble::tribble(
-  ~participant, ~phase, ~order,
-  1, "post", 36,
-  4, "pre", 10,
-  4, "post", 9,
-  5, "pre", 2,
-  5, "pre", 19, # どもり
-  5, "post", 11,
-  5, "post", 9, # filler
-  5, "post", 30, # filler
-)
+# cor(df_chr_man_new$manual, df_chr_man_new$chronset)
+# ggsave(here::here("analyses/figure/gg_chr_man.pdf"), gg_chr_man, height = 90, width = 100, units = "mm", dpi = 300)
+# df_chr_man %>%
+#   dplyr::filter(manual - 300 > chronset, chronset > 500) %>%
+#   dplyr::arrange(participant) %>%
+#   write_csv(here::here("exp/data/df_man-over-chr.csv"))
