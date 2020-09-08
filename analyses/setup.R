@@ -264,6 +264,7 @@ df_chr_man_new <- left_join(df_chr_man, df_record_w_filler, by = c("participant"
   dplyr::filter(chronset > 500)
 
 res_lm <- lm(chronset ~ manual, data = df_chr_man_new)
+R2 <- (var(res_lm$fitted.values) * res_lm$df.residual) / (var(res_lm$model$chronset) * res_lm$df.residual)
 gg_chr_man <- df_chr_man_new %>% 
   ggplot2::ggplot() +
   aes(x = manual, y = chronset) +
@@ -273,9 +274,10 @@ gg_chr_man <- df_chr_man_new %>%
   coord_cartesian(xlim = c(0, 3200), ylim = c(0, 3200), expand = F) +
   xlim(0,3200) +
   annotate("text", 
-           label = sprintf("y = %.2f + %.2f x", res_lm$coefficients["(Intercept)"], res_lm$coefficients["manual"]), 
-           x = 1000, y = 2500) +
+           label = sprintf("paste(y == %.2f + %.2f * x, ','~~italic(R) ^ 2==%.2f)", res_lm$coefficients["(Intercept)"], res_lm$coefficients["manual"], R2), 
+           x = 1200, y = 2800, parse = T) +
   theme_bw(base_family = "Helvetica") +
+  labs(x = "Manual",y = "Chronset") +
   theme(panel.grid = element_blank(),
         axis.text = element_text(color = "black"))
 
@@ -285,3 +287,5 @@ gg_chr_man <- df_chr_man_new %>%
 #   dplyr::filter(manual - 300 > chronset, chronset > 500) %>%
 #   dplyr::arrange(participant) %>%
 #   write_csv(here::here("exp/data/df_man-over-chr.csv"))
+
+
