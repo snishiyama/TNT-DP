@@ -277,7 +277,7 @@ gg_chr_man <- df_chr_man_new %>%
            label = sprintf("paste(y == %.2f + %.2f * x, ','~~italic(R) ^ 2==%.2f)", res_lm$coefficients["(Intercept)"], res_lm$coefficients["manual"], R2), 
            x = 1200, y = 2800, parse = T) +
   theme_bw(base_family = "Helvetica") +
-  labs(x = "Manual",y = "Chronset") +
+  labs(x = "Manual (ms)",y = "Chronset (ms)") +
   theme(panel.grid = element_blank(),
         axis.text = element_text(color = "black"))
 
