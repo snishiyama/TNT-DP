@@ -269,24 +269,30 @@ df_corr_rm %>%
   geom_point()
 
 # by-item correlation --
-df_dp_delay <- dplyr::left_join(
-  x = df_e2 %>% 
-    dplyr::filter(pre_recall_corr == 1, post_recall_corr == 1) %>% 
-    dplyr::mutate(diff = post_recall_rt - pre_recall_rt) %>% 
-    dplyr::select(participant, suppression, item_id, status, diff),
-  y = df_dp_e2 %>% dplyr::select(participant, suppression, status, congruency, "item_id" = ID, "dp_rt" = RT),
-  by = c("participant", "suppression", "status", "item_id"))
-
-df_dp_delay %>% 
-  tidyr::drop_na() %>% 
-  dplyr::group_by(participant, suppression, status, congruency) %>% 
-  tidyr::nest() %>% 
-  dplyr::mutate(corr = purrr::map(.x = data, .f = ~cor(.x$diff, .x$dp_rt, method = "spearman"))) %>% 
-  tidyr::unnest(corr) %>%
-  dplyr::group_by(suppression, status, congruency) %>% 
-  dplyr::summarise(mean = mean(corr, na.rm = T), sd = sd(corr, na.rm = T))
+# df_dp_delay <- dplyr::left_join(
+#   x = df_e2 %>% 
+#     dplyr::filter(pre_recall_corr == 1, post_recall_corr == 1) %>% 
+#     dplyr::mutate(diff = post_recall_rt - pre_recall_rt) %>% 
+#     dplyr::select(participant, suppression, item_id, status, diff),
+#   y = df_dp_e2 %>% dplyr::select(participant, suppression, status, congruency, "item_id" = ID, "dp_rt" = RT),
+#   by = c("participant", "suppression", "status", "item_id"))
+# 
+# df_dp_delay %>% 
+#   tidyr::drop_na() %>% 
+#   dplyr::group_by(participant, suppression, status, congruency) %>% 
+#   tidyr::nest() %>% 
+#   dplyr::mutate(corr = purrr::map(.x = data, .f = ~cor(.x$diff, .x$dp_rt, method = "spearman"))) %>% 
+#   tidyr::unnest(corr) %>%
+#   dplyr::group_by(suppression, status, congruency) %>% 
+#   dplyr::summarise(mean = mean(corr, na.rm = T), sd = sd(corr, na.rm = T))
+#   
+# df_corr_rm %>% 
+#   tidyr::pivot_wider(names_from = status, values_from = delay:dp) %>% 
+#   dplyr::select(-delay_think, -delay_baseline, -cong_nothink, -incong_nothink, -dp_nothink) %>% 
+#   split(.$suppression) %>% 
+#   purrr::map(.f = dplyr::select, -participant, -suppression) %>% 
+#   purrr::map(mscorci, corfun = pcor, nboot = 500)
   
-
 # plot --------------------------------------------------------------------
 
 gg_DP <- df_dp_mean_e2 %>% 
