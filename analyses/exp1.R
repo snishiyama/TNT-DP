@@ -63,14 +63,6 @@ dplyr::left_join(pwt_ques_nt_e1, df_es_nt_ques_e1, by = c("suppression", "group1
 
 # recall rate -------------------------------------------------------------
 
-# df_rcll_e1 <- df_e1 %>% 
-#   dplyr::select(participant, suppression, 
-#                 think = recall_think, 
-#                 nothink = recall_nothink, 
-#                 baseline = recall_base, 
-#                 substitute = recall_sub) %>% 
-#   tidyr::pivot_longer(think:substitute, names_to = "status", values_to = "rate")
-
 df_rcll_e1 <- df_e1 %>% 
   dplyr::select(participant, suppression, item_id = ID, status = condition,
                 pre_recall = learning, post_recall = target_recall) %>% 

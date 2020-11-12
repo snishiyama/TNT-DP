@@ -4,7 +4,7 @@
 library(tidyverse)
 library(rstatix)
 library(here)
-source(here::here("analyses/WRS-v35.txt"))
+source(here::here("analyses/WRS-v35.txt")) # from https://dornsife.usc.edu/labs/rwilcox/software/
 
 aov_2levels <- function(df, factor, model, level1, level2) {
   anova_table <- df %>% 
@@ -192,3 +192,24 @@ df_dp_raw_e2 <- purrr::map_dfr(
   ) %>% 
   dplyr::mutate(status = replace_na(status, "filler"))
 
+
+# Replace recall latency --------------------------------------------------
+# If you comment in this section, manually estimated recall latency will be replaced
+# with latency estimated by Chronset. This will change results of statistical analyses 
+# concerning recall latency in Experiment 2, but you will find the results almost the same as 
+# the ones obtained when all recall latency was estimated manually. 
+
+# source(here::here("analyses/reliability.R"))
+# 
+# df_chr_w <- df_chr_man_new %>% 
+#   dplyr::select(-filename, -filler, -manual, -order, item_id = ID) %>% 
+#   tidyr::pivot_wider(names_from = phase, values_from = chronset)
+# 
+# df_e2 <- dplyr::left_join(df_e2, df_chr_w, by = c("participant", "item_id")) %>% 
+#   dplyr::mutate(pre_recall_rt = if_else(is.na(pre), pre_recall_rt, pre/1000),
+#                 post_recall_rt = if_else(is.na(post), post_recall_rt, post/1000)) %>% 
+#   dplyr::select(-c(pre:sub))
+# 
+# df_rcll_l_sub <- dplyr::left_join(df_rcll_l_sub, df_chr_w, by = c("participant", "ID" = "item_id")) %>% 
+#   dplyr::mutate(sub_rt = if_else(is.na(sub), sub_rt, sub/1000)) %>% 
+#   dplyr::select(-c(pre:sub))

@@ -106,26 +106,26 @@ df_rcll_r_e2 %>%
 #   tidyr::pivot_longer(think:baseline, names_to = "status", values_to = "delay") %>% 
 #   tidyr::drop_na() # remove data of id 27
 
-df_rcll_d_e2 <- df_e2 %>% 
-  dplyr::select(participant, suppression, item_id, status, contains("recall")) %>% 
-  dplyr::filter(pre_recall_corr == 1, post_recall_corr == 1) %>% 
-  dplyr::mutate(diff = post_recall_rt - pre_recall_rt) %>% 
-  dplyr::group_by(participant, suppression, status) %>% 
-  dplyr::summarise(delay = mean(diff, na.rm = T), .groups = "drop")
-
-# anova t vs nt vs b
-aov_rcll_d_e2 <- df_rcll_d_e2 %>% 
-  rstatix::anova_test(delay ~ suppression*status + Error(participant/status)) %>% 
-  rstatix::get_anova_table(correction = "auto")
-
-# multiple comparisons
-mc_rcll_d_e2 <- multi_aov(aov_rcll_d_e2, "status")
-
-# group-by simple main effect analyses for no-think items
-sme_rcll_d_e2 <- df_rcll_d_e2 %>% 
-  dplyr::group_by(status) %>% 
-  rstatix::anova_test(delay ~ suppression) %>% 
-  rstatix::get_anova_table(correction = "auto")
+# df_rcll_d_e2 <- df_e2 %>% 
+#   dplyr::select(participant, suppression, item_id, status, contains("recall")) %>% 
+#   dplyr::filter(pre_recall_corr == 1, post_recall_corr == 1) %>% 
+#   dplyr::mutate(diff = post_recall_rt - pre_recall_rt) %>% 
+#   dplyr::group_by(participant, suppression, status) %>% 
+#   dplyr::summarise(delay = mean(diff, na.rm = T), .groups = "drop")
+# 
+# # anova t vs nt vs b
+# aov_rcll_d_e2 <- df_rcll_d_e2 %>% 
+#   rstatix::anova_test(delay ~ suppression*status + Error(participant/status)) %>% 
+#   rstatix::get_anova_table(correction = "auto")
+# 
+# # multiple comparisons
+# mc_rcll_d_e2 <- multi_aov(aov_rcll_d_e2, "status")
+# 
+# # group-by simple main effect analyses for no-think items
+# sme_rcll_d_e2 <- df_rcll_d_e2 %>% 
+#   dplyr::group_by(status) %>% 
+#   rstatix::anova_test(delay ~ suppression) %>% 
+#   rstatix::get_anova_table(correction = "auto")
 
 # substitute
 df_rcll_l_sub_mean <- df_rcll_l_sub %>% 
@@ -142,9 +142,9 @@ l_sub_rcll_l <- df_rcll_l_sub_mean %>%
 ttest_sub_rcll_l_e2["g"] <- MBESS::smd(l_sub_rcll_l$DS$mean, l_sub_rcll_l$TS$mean, Unbiased = T)
 
 # reporting
-format_aov(aov_rcll_d_e2)
-format_mc(mc_rcll_d_e2, es = T)
-format_aov(sme_rcll_d_e2, grouped = T)
+# format_aov(aov_rcll_d_e2)
+# format_mc(mc_rcll_d_e2, es = T)
+# format_aov(sme_rcll_d_e2, grouped = T)
 format_t(ttest_sub_rcll_l_e2, p_adj = F, es = T)
 
 
@@ -242,57 +242,18 @@ calc_scor <- function(df, group) {
     purrr::map(mscorci, corfun = pcor, nboot = 500)
 }
 
-# res_corr_ds <- calc_scor(df_corr, group = "DS")
+# compute correlations
+df_corr_rm <- df_corr %>% dplyr::filter(!participant %in% c(15, 27))
+res_corr_ds <- calc_scor(df_corr_rm, group = "DS")
 res_corr_ts <- calc_scor(df_corr, group = "TS")
 
-df_corr_rm <- df_corr %>% dplyr::filter(!participant %in% c(15, 27))
+# comparisons of correlations
+df_corr_ds <- df_corr_rm %>% dplyr::filter(suppression == "DS", status == "nothink")
+df_corr_ts <- df_corr %>% dplyr::filter(suppression == "TS", status == "nothink")
+twocor(df_corr_ds$cong, df_corr_ds$delay, df_corr_ts$cong, df_corr_ts$delay, corfun = scor, cop = 3)
+twocor(df_corr_ds$dp, df_corr_ds$delay, df_corr_ts$dp, df_corr_ts$delay, corfun = scor)
 
-res_corr_ds_rm <- calc_scor(df_corr_rm, group = "DS")
 
-df_corr_rm %>%
-  dplyr::filter(suppression == "DS") %>%
-  split(.$status) %>% 
-  purrr::map(dplyr::select, delay, cong, incong, dp) %>%
-  purrr::map(psych::corr.test, method = "pearson")
-
-df_corr_rm %>%
-  dplyr::filter(suppression == "TS") %>%
-  split(.$status) %>% 
-  purrr::map(dplyr::select, delay, cong, incong, dp) %>%
-  purrr::map(psych::corr.test, method = "pearson")
-
-# 
-df_corr_rm %>%
-  dplyr::filter(suppression == "DS", status == "nothink") %>%
-  ggplot() +
-  aes(x = delay, y = dp*1000) +
-  geom_point()
-
-# by-item correlation --
-# df_dp_delay <- dplyr::left_join(
-#   x = df_e2 %>% 
-#     dplyr::filter(pre_recall_corr == 1, post_recall_corr == 1) %>% 
-#     dplyr::mutate(diff = post_recall_rt - pre_recall_rt) %>% 
-#     dplyr::select(participant, suppression, item_id, status, diff),
-#   y = df_dp_e2 %>% dplyr::select(participant, suppression, status, congruency, "item_id" = ID, "dp_rt" = RT),
-#   by = c("participant", "suppression", "status", "item_id"))
-# 
-# df_dp_delay %>% 
-#   tidyr::drop_na() %>% 
-#   dplyr::group_by(participant, suppression, status, congruency) %>% 
-#   tidyr::nest() %>% 
-#   dplyr::mutate(corr = purrr::map(.x = data, .f = ~cor(.x$diff, .x$dp_rt, method = "spearman"))) %>% 
-#   tidyr::unnest(corr) %>%
-#   dplyr::group_by(suppression, status, congruency) %>% 
-#   dplyr::summarise(mean = mean(corr, na.rm = T), sd = sd(corr, na.rm = T))
-#   
-# df_corr_rm %>% 
-#   tidyr::pivot_wider(names_from = status, values_from = delay:dp) %>% 
-#   dplyr::select(-delay_think, -delay_baseline, -cong_nothink, -incong_nothink, -dp_nothink) %>% 
-#   split(.$suppression) %>% 
-#   purrr::map(.f = dplyr::select, -participant, -suppression) %>% 
-#   purrr::map(mscorci, corfun = pcor, nboot = 500)
-  
 # plot --------------------------------------------------------------------
 
 gg_DP <- df_dp_mean_e2 %>% 
