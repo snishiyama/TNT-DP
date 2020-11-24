@@ -1,6 +1,6 @@
 # TNT-DP
 
-This is a repository of Nishiyama and Saito (in press) "Transferable Inhibition of Direct Suppression: Evidence from a Dot-probe Task".
+This is a repository of Nishiyama and Saito (in press) "Transferable Inhibition of Direct Suppression: Evidence from a Dot-probe Task", which will be published in _Psychologia_
 
 ## Requirements
 
