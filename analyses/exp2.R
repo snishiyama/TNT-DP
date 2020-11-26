@@ -100,31 +100,25 @@ df_rcll_r_e2 %>%
 
 # recall latency ----------------------------------------------------------
 
-# df_rcll_d_e2 <- df_e2 %>% 
-#   dplyr::select(participant, suppression, ends_with("delay")) %>% 
-#   dplyr::rename(think = t_delay, nothink = nt_delay, baseline = b_delay) %>% 
-#   tidyr::pivot_longer(think:baseline, names_to = "status", values_to = "delay") %>% 
-#   tidyr::drop_na() # remove data of id 27
+df_rcll_d_e2 <- df_e2 %>%
+  dplyr::select(participant, suppression, item_id, status, contains("recall")) %>%
+  dplyr::filter(pre_recall_corr == 1, post_recall_corr == 1) %>%
+  dplyr::mutate(diff = post_recall_rt - pre_recall_rt) %>%
+  dplyr::group_by(participant, suppression, status) %>%
+  dplyr::summarise(delay = mean(diff, na.rm = T), .groups = "drop")
 
-# df_rcll_d_e2 <- df_e2 %>% 
-#   dplyr::select(participant, suppression, item_id, status, contains("recall")) %>% 
-#   dplyr::filter(pre_recall_corr == 1, post_recall_corr == 1) %>% 
-#   dplyr::mutate(diff = post_recall_rt - pre_recall_rt) %>% 
-#   dplyr::group_by(participant, suppression, status) %>% 
-#   dplyr::summarise(delay = mean(diff, na.rm = T), .groups = "drop")
-# 
 # # anova t vs nt vs b
-# aov_rcll_d_e2 <- df_rcll_d_e2 %>% 
-#   rstatix::anova_test(delay ~ suppression*status + Error(participant/status)) %>% 
+# aov_rcll_d_e2 <- df_rcll_d_e2 %>%
+#   rstatix::anova_test(delay ~ suppression*status + Error(participant/status)) %>%
 #   rstatix::get_anova_table(correction = "auto")
 # 
 # # multiple comparisons
 # mc_rcll_d_e2 <- multi_aov(aov_rcll_d_e2, "status")
 # 
 # # group-by simple main effect analyses for no-think items
-# sme_rcll_d_e2 <- df_rcll_d_e2 %>% 
-#   dplyr::group_by(status) %>% 
-#   rstatix::anova_test(delay ~ suppression) %>% 
+# sme_rcll_d_e2 <- df_rcll_d_e2 %>%
+#   dplyr::group_by(status) %>%
+#   rstatix::anova_test(delay ~ suppression) %>%
 #   rstatix::get_anova_table(correction = "auto")
 
 # substitute
@@ -193,7 +187,7 @@ df_dp_rm <- dplyr::anti_join(df_dp_raw_e2,
   dplyr::group_by(filler) %>%
   dplyr::summarise(mean = mean(freq), sd = sd(freq), .groups = "drop")
 
-df_dp_rm$mean / c(36, 124)
+# df_dp_rm$mean / c(36, 124)
 
 df_dp_mean_e2 <- df_dp_e2 %>% 
   dplyr::left_join(df_e2 %>% dplyr::select(participant, item_id, status, pre_recall_corr),
@@ -285,7 +279,7 @@ gg_DP <- df_dp_mean_e2 %>%
         strip.text = element_text(size=12)
   )
 
-gg_delay <- df_rcll_d_e2 %>% 
+gg_delay <- df_rcll_d_e2_rm %>% 
   mutate(suppression = if_else(suppression == "DS", "Direct suppression", "Thought substitution"),
          condition = case_when(status == "think" ~ "Think",
                                status == "nothink" ~ "No-Think",
@@ -310,3 +304,5 @@ gg_delay <- df_rcll_d_e2 %>%
 
 # ggsave(filename = here::here("analyses/figure/gg_DP_exp2.pdf"), plot = gg_DP, height = 90, width = 160, units = "mm", dpi = 300)
 # ggsave(filename = here::here("analyses/figure/gg_delay_exp2.pdf"), plot = gg_delay, height = 90, width = 160, units = "mm", dpi = 300)
+# ggsave(filename = here::here("analyses/figure/gg_DP_exp2.tiff"), plot = gg_DP, height = 90, width = 160, units = "mm", dpi = 300)
+# ggsave(filename = here::here("analyses/figure/gg_delay_exp2.tiff"), plot = gg_delay, height = 90, width = 160, units = "mm", dpi = 300)

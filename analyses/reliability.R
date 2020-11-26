@@ -95,6 +95,7 @@ gg_chr_man <- df_chr_man_new %>%
 
 # cor(df_chr_man_new$manual, df_chr_man_new$chronset)
 # ggsave(here::here("analyses/figure/gg_chr_man.pdf"), gg_chr_man, height = 90, width = 100, units = "mm", dpi = 300)
+# ggsave(here::here("analyses/figure/gg_chr_man.tiff"), gg_chr_man, height = 90, width = 100, units = "mm", dpi = 300)
 # df_chr_man %>%
 #   dplyr::filter(manual - 300 > chronset, chronset > 500) %>%
 #   dplyr::arrange(participant) %>%
